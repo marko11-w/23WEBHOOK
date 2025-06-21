@@ -75,6 +75,29 @@ def start(message):
     markup.row(buttons["support"])
     bot.send_message(uid, "👋 مرحباً بك في بوت رحلة المليار!", reply_markup=markup)
 
+@bot.message_handler(func=lambda m: m.text == buttons["collect"])
+def handle_collect(message):
+    bot.send_message(message.chat.id, "🟢 تم تفعيل زر جمع النقاط")
+
+@bot.message_handler(func=lambda m: m.text == buttons["request"])
+def handle_request(message):
+    bot.send_message(message.chat.id, "🟢 تم تفعيل زر طلب المتابعين")
+
+@bot.message_handler(func=lambda m: m.text == buttons["balance"])
+def handle_balance(message):
+    user = get_user(message.from_user.id)
+    bot.send_message(message.chat.id, f"💰 رصيدك: {user['points']} نقطة")
+
+@bot.message_handler(func=lambda m: m.text == buttons["status"])
+def handle_status(message):
+    user = get_user(message.from_user.id)
+    vip_status = "✅ VIP" if user.get("vip") else "❌ عادي"
+    bot.send_message(message.chat.id, f"🎯 حالتك: {vip_status}")
+
+@bot.message_handler(func=lambda m: m.text == buttons["support"])
+def handle_support(message):
+    bot.send_message(message.chat.id, "📞 تواصل مع الدعم على @M_A_R_K75")
+
 @bot.message_handler(commands=["admin"])
 def admin_help(message):
     if message.from_user.id != ADMIN_ID:
