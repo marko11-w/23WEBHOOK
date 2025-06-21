@@ -89,11 +89,69 @@ def handle_collect(message):
 
     bot.send_message(uid, "✅ لقد اشتركت في جميع القنوات. لا توجد قنوات جديدة حاليًا.")
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith("check_"))
+def callback_check(call):
+    uid = call.from_user.id
+    ch = call.data.split("check_")[1]
+    if check_subscription(uid, ch):
+        user = get_user(uid)
+        user["points"] += 10
+        save_json(USERS_FILE, users)
+        bot.answer_callback_query(call.id, "✅ تم التحقق من الاشتراك. تم إضافة 10 نقاط!")
+        bot.send_message(uid, f"🎉 حصلت على 10 نقاط. رصيدك الآن: {user['points']}")
+    else:
+        bot.answer_callback_query(call.id, "❌ لم يتم التأكد من اشتراكك. تأكد من الانضمام للقناة أولاً.")
+
 @bot.message_handler(func=lambda m: m.text == buttons["support"])
 def handle_support(message):
     bot.send_message(message.chat.id, "📞 تواصل مع الدعم: [@M_A_R_K75](https://t.me/M_A_R_K75)")
 
-# باقي الكود بدون تغيير...
+@bot.message_handler(func=lambda m: m.text == buttons["request"])
+def handle_request(message):
+    msg = bot.send_message(message.chat.id, "📨 أرسل رابط قناتك بالشكل التالي:\nhttps://t.me/YourChannel")
+    bot.register_next_step_handler(msg, save_channel)
+
+def save_channel(message):
+    uid = message.from_user.id
+    user = get_user(uid)
+
+    if not message.text.startswith("https://t.me/"):
+        bot.send_message(uid, "❌ الرابط غير صالح. تأكد من أنه يبدأ بـ https://t.me/")
+        return
+
+    username = message.text.split("https://t.me/")[1].replace("@", "")
+    full_username = f"@{username}"
+
+    try:
+        member = bot.get_chat_member(full_username, bot.get_me().id)
+        if member.status not in ["administrator", "creator"]:
+            bot.send_message(uid, f"❌ يجب أولاً تعيين البوت كـ مشرف في قناتك {full_username}.")
+            return
+    except:
+        bot.send_message(uid, f"❌ فشل التحقق من قناة {full_username}. تأكد أن البوت مشرف وأن القناة عامة.")
+        return
+
+    if user["points"] < 2:
+        bot.send_message(uid, "❌ تحتاج على الأقل نقطتين لطلب المتابعين.")
+        return
+
+    user["points"] -= 2
+    channels[full_username] = True
+    save_json(USERS_FILE, users)
+    save_json(CHANNELS_FILE, channels)
+    bot.send_message(uid, f"✅ تم تفعيل قناتك {full_username} بنجاح!")
+
+@bot.message_handler(func=lambda m: m.text == buttons["balance"])
+def handle_balance(message):
+    user = get_user(message.from_user.id)
+    bot.send_message(message.chat.id, f"💰 رصيدك الحالي: {user['points']} نقطة")
+
+@bot.message_handler(func=lambda m: m.text == buttons["status"])
+def handle_status(message):
+    user = get_user(message.from_user.id)
+    vip_status = "✅ VIP" if user.get("vip") else "❌ عادي"
+    bot.send_message(message.chat.id, f"🎯 حالتك: {vip_status}")
+
 @app.route("/", methods=["POST"])
 def webhook():
     update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
