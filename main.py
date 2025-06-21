@@ -77,7 +77,31 @@ def start(message):
 
 @bot.message_handler(func=lambda m: m.text == buttons["collect"])
 def handle_collect(message):
-    bot.send_message(message.chat.id, "🟢 تم تفعيل زر جمع النقاط")
+    uid = message.from_user.id
+    user = get_user(uid)
+
+    for ch in channels:
+        if not check_subscription(uid, ch):
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("✅ اشتركت ✅", callback_data=f"check_{ch}"))
+            bot.send_message(uid, f"📢 اشترك في القناة {ch} للحصول على 10 نقاط", reply_markup=markup)
+            return
+
+    bot.send_message(uid, "✅ لقد اشتركت في جميع القنوات. لا توجد قنوات جديدة حاليًا.")
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("check_"))
+def verify_channel(call):
+    uid = call.from_user.id
+    ch = call.data.split("_", 1)[1]
+
+    if check_subscription(uid, ch):
+        user = get_user(uid)
+        user["points"] += 10
+        save_json(USERS_FILE, users)
+        bot.answer_callback_query(call.id, "✅ تم التحقق وتم إضافة 10 نقاط")
+        bot.send_message(uid, f"🎉 تم إضافة 10 نقاط. رصيدك الآن: {user['points']}")
+    else:
+        bot.answer_callback_query(call.id, "❌ تأكد من الاشتراك أولاً")
 
 @bot.message_handler(func=lambda m: m.text == buttons["request"])
 def handle_request(message):
