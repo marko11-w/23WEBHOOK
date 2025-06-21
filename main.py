@@ -4,8 +4,8 @@ from flask import Flask, request
 import json
 import os
 
-API_TOKEN = "YOUR_TOKEN"
-ADMIN_ID = 123456789
+API_TOKEN = "YOUR_TOKEN"  # استبدل بالتوكن الحقيقي
+ADMIN_ID = 123456789       # استبدل بمعرفك الخاص (أو معرف المسؤول)
 
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 app = Flask(__name__)
@@ -21,15 +21,15 @@ def load_json(path, default):
     if not os.path.exists(path):
         with open(path, "w") as f:
             json.dump(default, f)
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         try:
             return json.load(f)
         except json.JSONDecodeError:
             return default
 
 def save_json(path, data):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
 users = load_json(USERS_FILE, {})
 channels = load_json(CHANNELS_FILE, {})
@@ -56,16 +56,20 @@ def get_user(uid):
     uid = str(uid)
     if uid not in users:
         users[uid] = {"points": 0, "vip": False}
+        save_json(USERS_FILE, users)
     return users[uid]
 
 def is_banned(uid):
     return str(uid) in banned
 
-def check_subscription(user_id, username):
+def check_subscription(user_id, channel_username):
+    if not channel_username.startswith("@"):
+        channel_username = "@" + channel_username
     try:
-        member = bot.get_chat_member(username, user_id)
+        member = bot.get_chat_member(channel_username, user_id)
         return member.status in ["member", "administrator", "creator"]
-    except:
+    except Exception as e:
+        print(f"Error checking subscription for {channel_username} and user {user_id}: {e}")
         return False
 
 @bot.message_handler(commands=["start"])
@@ -134,9 +138,10 @@ def save_channel(message):
     try:
         member = bot.get_chat_member(full_username, bot.get_me().id)
         if member.status not in ["administrator", "creator"]:
-            bot.send_message(uid, f"❌ يجب أولاً تعيين البوت كـ مشرف في قناتك {full_username}.")
+            bot.send_message(uid, f"❌ يجب أولاً تعيين البوت كمشرف في قناتك {full_username}.")
             return
-    except:
+    except Exception as e:
+        print(f"Error verifying channel admin: {e}")
         bot.send_message(uid, f"❌ فشل التحقق من قناة {full_username}. تأكد أن البوت مشرف وأن القناة عامة.")
         return
 
@@ -242,9 +247,15 @@ def admin_help(message):
 
 @app.route("/", methods=["POST"])
 def webhook():
-    update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
+    update = telebot.types.Update.de_json(request.get_data(as_text=True))
     bot.process_new_updates([update])
     return "OK", 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "polling":
+        print("Bot started with polling...")
+        bot.infinity_polling()
+    else:
+        print("Bot started with webhook Flask server...")
+        app.run(host="0.0.0.0", port=8080)
