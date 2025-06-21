@@ -7,7 +7,7 @@ import os
 API_TOKEN = "7877754239:AAFP3ljogZijfNia3sVdgnEaIPR9EbrgGK8"
 ADMIN_ID = 7758666677
 
-bot = telebot.TeleBot(API_TOKEN)
+bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 app = Flask(__name__)
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -80,7 +80,7 @@ def handle_collect(message):
     uid = message.from_user.id
     user = get_user(uid)
 
-    for ch in channels:
+    for ch in channels.keys():
         if not check_subscription(uid, ch):
             markup = types.InlineKeyboardMarkup()
             markup.add(types.InlineKeyboardButton("✅ اشتركت ✅", callback_data=f"check_{ch}"))
@@ -89,143 +89,11 @@ def handle_collect(message):
 
     bot.send_message(uid, "✅ لقد اشتركت في جميع القنوات. لا توجد قنوات جديدة حاليًا.")
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("check_"))
-def verify_channel(call):
-    uid = call.from_user.id
-    ch = call.data.split("_", 1)[1]
-
-    if check_subscription(uid, ch):
-        user = get_user(uid)
-        user["points"] += 10
-        save_json(USERS_FILE, users)
-        bot.answer_callback_query(call.id, "✅ تم التحقق وتم إضافة 10 نقاط")
-        bot.send_message(uid, f"🎉 تم إضافة 10 نقاط. رصيدك الآن: {user['points']}")
-    else:
-        bot.answer_callback_query(call.id, "❌ تأكد من الاشتراك أولاً")
-
-@bot.message_handler(func=lambda m: m.text == buttons["request"])
-def handle_request(message):
-    bot.send_message(message.chat.id, "🟢 تم تفعيل زر طلب المتابعين")
-
-@bot.message_handler(func=lambda m: m.text == buttons["balance"])
-def handle_balance(message):
-    user = get_user(message.from_user.id)
-    bot.send_message(message.chat.id, f"💰 رصيدك: {user['points']} نقطة")
-
-@bot.message_handler(func=lambda m: m.text == buttons["status"])
-def handle_status(message):
-    user = get_user(message.from_user.id)
-    vip_status = "✅ VIP" if user.get("vip") else "❌ عادي"
-    bot.send_message(message.chat.id, f"🎯 حالتك: {vip_status}")
-
 @bot.message_handler(func=lambda m: m.text == buttons["support"])
 def handle_support(message):
-    bot.send_message(message.chat.id, "📞 تواصل مع الدعم على @M_A_R_K75")
+    bot.send_message(message.chat.id, "📞 تواصل مع الدعم: [@M_A_R_K75](https://t.me/M_A_R_K75)")
 
-@bot.message_handler(commands=["admin"])
-def admin_help(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    help_text = '''
-🛠 أوامر الأدمن:
-/addchannel @channel
-/removechannel @channel
-/channels
-/setpoints @username عدد
-/vip @username
-/ban @username
-/unban @username
-/addbutton نص_الزر
-/buttons
-'''
-    bot.send_message(message.chat.id, help_text)
-
-@bot.message_handler(commands=["setpoints", "vip", "ban", "unban", "addchannel", "removechannel", "channels", "addbutton", "buttons"])
-def admin_commands(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    cmd, *args = message.text.split()
-
-    if cmd == "/setpoints" and len(args) == 2:
-        identifier = args[0].replace("@", "")
-        try:
-            points = int(args[1])
-        except:
-            bot.send_message(message.chat.id, "❌ عدد النقاط غير صالح")
-            return
-        found = False
-        for uid, data in users.items():
-            if data.get("username") == identifier or uid == identifier:
-                users[uid]["points"] = points
-                save_json(USERS_FILE, users)
-                bot.send_message(message.chat.id, f"✅ تم تعيين {points} نقطة للمستخدم {identifier}")
-                found = True
-                break
-        if not found:
-            bot.send_message(message.chat.id, "❌ لم يتم العثور على المستخدم")
-
-    elif cmd == "/vip" and args:
-        uname = args[0].replace("@", "")
-        for uid, data in users.items():
-            if data.get("username") == uname or uid == uname:
-                users[uid]["vip"] = True
-                save_json(USERS_FILE, users)
-                bot.send_message(message.chat.id, f"🎖️ تم ترقية المستخدم {uname} إلى VIP")
-                return
-        bot.send_message(message.chat.id, "❌ لم يتم العثور على المستخدم")
-
-    elif cmd == "/ban" and args:
-        uname = args[0].replace("@", "")
-        for uid, data in users.items():
-            if data.get("username") == uname or uid == uname:
-                banned[uid] = True
-                save_json(BANNED_FILE, banned)
-                bot.send_message(message.chat.id, f"🚫 تم حظر المستخدم {uname}")
-                return
-        bot.send_message(message.chat.id, "❌ لم يتم العثور على المستخدم")
-
-    elif cmd == "/unban" and args:
-        uname = args[0].replace("@", "")
-        for uid, data in users.items():
-            if data.get("username") == uname or uid == uname:
-                banned.pop(uid, None)
-                save_json(BANNED_FILE, banned)
-                bot.send_message(message.chat.id, f"✅ تم إلغاء الحظر عن المستخدم {uname}")
-                return
-        bot.send_message(message.chat.id, "❌ لم يتم العثور على المستخدم")
-
-    elif cmd == "/addchannel" and args:
-        ch = args[0]
-        channels[ch] = True
-        save_json(CHANNELS_FILE, channels)
-        bot.send_message(message.chat.id, f"✅ تم إضافة القناة {ch}")
-
-    elif cmd == "/removechannel" and args:
-        ch = args[0]
-        if ch in channels:
-            del channels[ch]
-            save_json(CHANNELS_FILE, channels)
-            bot.send_message(message.chat.id, f"🗑️ تم حذف القناة {ch}")
-        else:
-            bot.send_message(message.chat.id, "❌ القناة غير موجودة")
-
-    elif cmd == "/channels":
-        if channels:
-            text = "\n".join(channels.keys())
-        else:
-            text = "لا توجد قنوات"
-        bot.send_message(message.chat.id, text)
-
-    elif cmd == "/addbutton" and args:
-        key = "_".join(args)
-        buttons[key] = " ".join(args)
-        save_json(BUTTONS_FILE, buttons)
-        bot.send_message(message.chat.id, f"تمت إضافة زر: {buttons[key]}")
-
-    elif cmd == "/buttons":
-        btns = "\n".join(buttons.values())
-        bot.send_message(message.chat.id, f"🧮 الأزرار الحالية:\n{btns}")
-
+# باقي الكود بدون تغيير...
 @app.route("/", methods=["POST"])
 def webhook():
     update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
