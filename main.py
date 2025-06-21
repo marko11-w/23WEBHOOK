@@ -4,8 +4,8 @@ from flask import Flask, request
 import json
 import os
 
-API_TOKEN = "YOUR_TOKEN"  # استبدل بالتوكن الحقيقي
-ADMIN_ID = 123456789       # استبدل بمعرفك الخاص (أو معرف المسؤول)
+API_TOKEN = "7877754239:AAFP3ljogZijfNia3sVdgnEaIPR9EbrgGK8"
+ADMIN_ID = 7758666677
 
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 app = Flask(__name__)
@@ -19,7 +19,7 @@ BANNED_FILE = os.path.join(DATA_DIR, "banned.json")
 
 def load_json(path, default):
     if not os.path.exists(path):
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(default, f)
     with open(path, encoding="utf-8") as f:
         try:
