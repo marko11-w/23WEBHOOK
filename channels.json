@@ -1,3 +1,2 @@
-{
-  "channel_url": "https://t.me/MA_R_KO1"
-}
+safe_url = "https://t.me/MA\\_R\\_KO1"
+bot.send_message(chat_id, f"🔗 رابط القناة: {safe_url}", parse_mode="Markdown")
