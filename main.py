@@ -101,7 +101,7 @@ def start(message):
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     if not message.caption:
-        return bot.reply_to(message, "❗ أرسل صورة البطاقة مع كتابة مبلغ الاشتراك في التعليق.")
+        return bot.reply_to(message, "❗ أرسل صورة البطاقة الاسيا سيل  مع كتابة مبلغ الاشتراك في التعليق.")
     
     # ابحث عن مبلغ الاشتراك في التعليق (رقم فقط)
     amount = None
