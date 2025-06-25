@@ -211,7 +211,7 @@ def handle_withdraw_button(message):
 
 @bot.message_handler(func=lambda m: m.text == "📦 الاشتراك")
 def handle_subscribe_button(message):
-    bot.reply_to(message, "💳 أرسل صورة بطاقة الدفع الآن مع ذكر مبلغ الاشتراك بالتعليق.")
+    bot.reply_to(message, "💳 أرسل صورة بطاقة الدفع اسيا سيل  الآن مع ذكر مبلغ الاشتراك بالتعليق.")
 
 @bot.message_handler(func=lambda m: m.text == "🚫 إلغاء الاشتراك")
 def handle_cancel_button(message):
