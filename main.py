@@ -5,11 +5,14 @@ import os
 import time
 import threading
 import schedule
-from datetime import datetime
+from flask import Flask, request
 
 TOKEN = "7504294266:AAHgYMIxq5G1hxXRmGF2O7zYKKi-bPjReeM"
 ADMIN_ID = 7758666677
+WEBHOOK_URL = "https://23webhook-production.up.railway.app/"
+
 bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
 DATA_FILE = "subs.json"
 if not os.path.exists(DATA_FILE):
@@ -25,6 +28,16 @@ def save_data(data):
         json.dump(data, f, indent=2)
 
 user_subscriptions = load_data()
+
+@app.route("/", methods=["POST"])
+def webhook():
+    update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
+    bot.process_new_updates([update])
+    return "OK", 200
+
+@app.route("/", methods=["GET"])
+def index():
+    return "Bot is running.", 200
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -173,7 +186,6 @@ def manual_send(message):
     send_daily_profits()
     bot.send_message(ADMIN_ID, "✅ تم إرسال الأرباح يدوياً.")
 
-# جدولة الأرباح كل 24 ساعة
 schedule.every(24).hours.do(send_daily_profits)
 
 def schedule_thread():
@@ -183,5 +195,10 @@ def schedule_thread():
 
 threading.Thread(target=schedule_thread).start()
 
-print("🤖 Bot is running...")
-bot.infinity_polling()
+# إزالة أي Webhook سابق
+bot.remove_webhook()
+time.sleep(1)
+bot.set_webhook(url=WEBHOOK_URL)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
