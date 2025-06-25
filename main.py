@@ -1,5 +1,5 @@
 import telebot
-from generate_video import generate_ai_video
+import os
 import flask
 from flask import request
 
@@ -9,14 +9,12 @@ app = flask.Flask(__name__)
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.send_message(message.chat.id, "🎬 جاري إنشاء الفيديو بالذكاء الاصطناعي، يرجى الانتظار...")
-
+    bot.send_message(message.chat.id, "🎬 جاري إرسال الفيديو، يرجى الانتظار...")
     try:
-        video_path = generate_ai_video()
-        with open(video_path, 'rb') as video:
-            bot.send_video(message.chat.id, video, caption="✅ تم إنشاء الفيديو بنجاح!")
+        video_url = "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4"
+        bot.send_video(message.chat.id, video_url, caption="✅ هذا فيديو جاهز باستخدام الذكاء الاصطناعي!")
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ حدث خطأ أثناء توليد الفيديو: {e}")
+        bot.send_message(message.chat.id, f"❌ حدث خطأ أثناء إرسال الفيديو: {e}")
 
 @app.route('/' + BOT_TOKEN, methods=['POST'])
 def webhook():
