@@ -15,6 +15,9 @@ bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 DATA_FILE = "subs.json"
+COUNT_FILE = "count.json"
+
+# --- تحميل وحفظ بيانات الاشتراكات ---
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w") as f:
         json.dump({}, f)
@@ -29,6 +32,23 @@ def save_data(data):
 
 user_subscriptions = load_data()
 
+# --- تحميل وحفظ بيانات عداد المستخدمين ---
+if not os.path.exists(COUNT_FILE):
+    with open(COUNT_FILE, "w") as f:
+        json.dump({"count": 0, "users": []}, f)
+
+def load_count():
+    with open(COUNT_FILE, "r") as f:
+        return json.load(f)
+
+def save_count(data):
+    with open(COUNT_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+count_data = load_count()
+count_lock = threading.Lock()
+
+# --- Webhook مع Flask ---
 @app.route("/", methods=["POST"])
 def webhook():
     update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
@@ -39,23 +59,55 @@ def webhook():
 def index():
     return "Bot is running.", 200
 
+# --- أمر start مع تسجيل المستخدم ---
 @bot.message_handler(commands=['start'])
 def start(message):
+    user_id = message.from_user.id
+
+    with count_lock:
+        if user_id not in count_data["users"]:
+            count_data["users"].append(user_id)
+            count_data["count"] += 1
+            save_count(count_data)
+
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.add("📦 الاشتراك", "💰 رصيدي")
-    keyboard.add("💸 سحب الأرباح", "🚫 إلغاء الاشتراك")
-    bot.send_message(message.chat.id,
-        "👋 مرحبًا بك في بوت الاستثمار!\n"
-        "💼 أرسل صورة بطاقة الدفع الآن مع ذكر المبلغ (50000، 100000...)\n"
-        "وسيتم مراجعتها من قبل الإدارة.",
-        reply_markup=keyboard
+    keyboard.add("💰 رصيدي", "💸 سحب الأرباح")
+    keyboard.add("📦 الاشتراك", "🚫 إلغاء الاشتراك")
+
+    text = (
+        "السلام عليكم ورحمة الله وبركاته ✅\n\n"
+        "عروض جديدة ✅\n\n"
+        "العروض كالتالي:\n\n"
+        "🌟 الفئات العادية 🌟\n"
+        "50 ألف - ربح يومي 15 ألف 😍\n"
+        "100 ألف - ربح يومي 30 ألف 🟢\n"
+        "150 ألف - ربح يومي 50 ألف 🟢\n"
+        "200 ألف - ربح يومي 65 ألف 🟢\n"
+        "250 ألف - ربح يومي 85 ألف 🟢\n"
+        "300 ألف - ربح يومي 100 ألف 🟢\n"
+        "350 ألف - ربح يومي 115 ألف 🟢\n"
+        "400 ألف - ربح يومي 125 ألف 🟢\n"
+        "450 ألف - ربح يومي 135 ألف 🟢\n"
+        "500 ألف - ربح يومي 150 ألف 🟢\n\n"
+        "🌐 فئات رجال الأعمال 🌐\n"
+        "600 ألف - ربح يومي 250 ألف ⭐️\n"
+        "700 ألف - ربح يومي 300 ألف ⭐️\n"
+        "800 ألف - ربح يومي 350 ألف ⭐️\n"
+        "900 ألف - ربح يومي 400 ألف ⭐️\n"
+        "1 مليون - ربح يومي 500 ألف ⭐️\n\n"
+        "مدة الاشتراك شهرين ✅\n"
+        "يمكنك تجديد الاشتراك بعد انتهاء المدة ➡️✅\n\n"
+        "للتواصل والاشتراك: @M_A_R_K75"
     )
 
+    bot.send_message(message.chat.id, text, reply_markup=keyboard)
+
+# --- استقبال صورة البطاقة مع المبلغ ---
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
-    if not message.caption or not any(x in message.caption for x in ["50000", "100000", "150000"]):
+    if not message.caption or not any(x in message.caption for x in ["50000", "100000", "150000","200000","250000","300000","350000","400000","450000","500000","600000","700000","800000","900000","1000000"]):
         return bot.reply_to(message, "❗ أرسل صورة البطاقة مع كتابة مبلغ الاشتراك في التعليق.")
-    
+
     user_id = str(message.from_user.id)
     user_subscriptions[user_id] = {
         "confirmed": False,
@@ -80,6 +132,7 @@ def handle_photo(message):
     )
     bot.reply_to(message, "📩 تم إرسال صورة البطاقة للإدارة، انتظر المراجعة.")
 
+# --- قبول الاشتراك ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("accept_"))
 def accept_subscription(call):
     user_id = call.data.split("_")[1]
@@ -91,6 +144,7 @@ def accept_subscription(call):
         bot.send_message(user_id, "✅ تم تفعيل اشتراكك، وستبدأ أرباحك اليومية من الآن.")
         bot.answer_callback_query(call.id, "تم التفعيل.")
 
+# --- رفض الاشتراك ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("reject_"))
 def reject_subscription(call):
     user_id = call.data.split("_")[1]
@@ -100,6 +154,7 @@ def reject_subscription(call):
         bot.send_message(user_id, "❌ تم رفض اشتراكك من الإدارة.")
         bot.answer_callback_query(call.id, "❌ تم الرفض")
 
+# --- عرض الرصيد ---
 @bot.message_handler(commands=['balance'])
 def balance(message):
     user_id = str(message.from_user.id)
@@ -109,20 +164,21 @@ def balance(message):
     else:
         bot.reply_to(message, "❌ لا تملك اشتراك مفعل.")
 
+# --- سحب الأرباح ---
 @bot.message_handler(commands=['withdraw'])
 def withdraw(message):
     args = message.text.split()
     user_id = str(message.from_user.id)
     user = user_subscriptions.get(user_id)
-    
+
     if not user or not user["confirmed"]:
         bot.reply_to(message, "❌ لا تملك اشتراك مفعل.")
         return
-    
+
     if len(args) != 2 or not args[1].isdigit():
         bot.reply_to(message, "❌ استخدم الأمر هكذا: /withdraw 20000")
         return
-    
+
     amount = int(args[1])
     if amount > user["balance"]:
         bot.reply_to(message, f"❌ رصيدك لا يكفي. لديك {user['balance']} دينار")
@@ -131,15 +187,14 @@ def withdraw(message):
         save_data(user_subscriptions)
         bot.reply_to(message, f"✅ تم استلام طلب السحب بقيمة {amount} دينار.\n📩 سيتم التحويل قريباً.")
 
-@bot.message_handler(commands=['members'])
-def show_members(message):
+# --- عرض عدد المستخدمين الذين ضغطوا /start ---
+@bot.message_handler(commands=['count'])
+def count_users(message):
     if message.from_user.id != ADMIN_ID:
         return
-    count = sum(1 for u in user_subscriptions.values() if u["confirmed"])
-    names = [f"{uid} - {data['amount']}" for uid, data in user_subscriptions.items() if data["confirmed"]]
-    msg = f"👥 عدد المشتركين: {count}\n\n" + "\n".join(names)
-    bot.send_message(ADMIN_ID, msg)
+    bot.send_message(ADMIN_ID, f"👥 عدد المستخدمين الذين ضغطوا /start: {count_data['count']}")
 
+# --- ربط أزرار لوحة المفاتيح ---
 @bot.message_handler(func=lambda m: m.text == "💰 رصيدي")
 def handle_balance_button(message):
     user_id = str(message.from_user.id)
@@ -167,6 +222,7 @@ def handle_cancel_button(message):
     else:
         bot.reply_to(message, "❌ لا يوجد اشتراك مفعل.")
 
+# --- إرسال الأرباح اليومية تلقائيًا ---
 def send_daily_profits():
     for uid, user in user_subscriptions.items():
         if user["confirmed"]:
@@ -195,7 +251,7 @@ def schedule_thread():
 
 threading.Thread(target=schedule_thread).start()
 
-# إزالة أي Webhook سابق
+# --- إعداد Webhook ---
 bot.remove_webhook()
 time.sleep(1)
 bot.set_webhook(url=WEBHOOK_URL)
