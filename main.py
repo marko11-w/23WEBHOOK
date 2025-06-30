@@ -1,7 +1,7 @@
-import telebot
+import 
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import requests
-import os
+import 
 from flask import Flask, request
 
 # ✅ بيانات البوت
