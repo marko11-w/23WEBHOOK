@@ -48,8 +48,7 @@ def index():
 
 # ✅ تشغيل Webhook عند الإقلاع
 if __name__ == '__main__':
-    WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # يجب تعيينه في Railway
-    if WEBHOOK_URL:
-        bot.remove_webhook()
-        bot.set_webhook(url=f"{WEBHOOK_URL}/{API_TOKEN}")
+    WEBHOOK_URL = "https://23webhook-production.up.railway.app"  # بدون '/' في النهاية
+    bot.remove_webhook()
+    bot.set_webhook(url=f"{WEBHOOK_URL}/{API_TOKEN}")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
