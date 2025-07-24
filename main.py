@@ -53,7 +53,7 @@ def send_subscription_message(chat_id):
             }],
                                 [{
                                     "text": "💬 التواصل مع الإدارة",
-                                    "url": "https://t.me/M_A_R_K75"
+                                    "url": "https://t.me/M_A_R_K74"
                                 }]]
         }
 
